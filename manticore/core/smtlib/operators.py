@@ -1,3 +1,4 @@
+from ..taint import TaintInt
 from .expression import (
     BitVec,
     BitVecExtract,
@@ -20,7 +21,7 @@ def ORD(s):
             return s
         else:
             return BitVecExtract(operand=s, offset=0, size=8)
-    elif isinstance(s, int):
+    elif isinstance(s, (int, TaintInt)):
         return s & 0xFF
     else:
         return ord(s)
@@ -34,6 +35,8 @@ def CHR(s):
             return BitVecExtract(operand=s, offset=0, size=8)
     elif isinstance(s, int):
         return bytes([s & 0xFF])
+    elif isinstance(s, TaintInt):
+        return s & 0xFF
     else:
         assert len(s) == 1
         return s
@@ -135,7 +138,7 @@ def EXTRACT(x, offset, size):
 
 
 def SEXTEND(x, size_src, size_dest):
-    if isinstance(x, int):
+    if isinstance(x, (int, TaintInt)):
         if x >= (1 << (size_src - 1)):
             x -= 1 << size_src
         return x & ((1 << size_dest) - 1)
@@ -144,7 +147,7 @@ def SEXTEND(x, size_src, size_dest):
 
 
 def ZEXTEND(x, size):
-    if isinstance(x, int):
+    if isinstance(x, (int, TaintInt)):
         return x & ((1 << size) - 1)
     assert isinstance(x, BitVec) and size - x.size >= 0
     if size - x.size > 0:
@@ -174,8 +177,8 @@ def CONCAT(total_size, *args):
 
 
 def ITE(cond, true_value, false_value):
-    assert isinstance(true_value, (Bool, bool, BitVec, int))
-    assert isinstance(false_value, (Bool, bool, BitVec, int))
+    assert isinstance(true_value, (Bool, bool, BitVec, int, TaintInt))
+    assert isinstance(false_value, (Bool, bool, BitVec, int, TaintInt))
     assert isinstance(cond, (Bool, bool))
     if isinstance(cond, bool):
         if cond:
@@ -195,13 +198,13 @@ def ITE(cond, true_value, false_value):
 def ITEBV(size, cond, true_value, false_value):
     if isinstance(cond, BitVec):
         cond = cond.Bool()
-    if isinstance(cond, int):
+    if isinstance(cond, (int, TaintInt)):
         cond = cond != 0
 
     assert isinstance(cond, (Bool, bool))
-    assert isinstance(true_value, (BitVec, int))
-    assert isinstance(false_value, (BitVec, int))
-    assert isinstance(size, int)
+    assert isinstance(true_value, (BitVec, int, TaintInt))
+    assert isinstance(false_value, (BitVec, int, TaintInt))
+    assert isinstance(size, (int, TaintInt))
 
     if isinstance(cond, BoolConstant) and not cond.taint:
         cond = cond.value
@@ -212,10 +215,10 @@ def ITEBV(size, cond, true_value, false_value):
         else:
             return false_value
 
-    if isinstance(true_value, int):
+    if isinstance(true_value, (int, TaintInt)):
         true_value = BitVecConstant(size=size, value=true_value)
 
-    if isinstance(false_value, int):
+    if isinstance(false_value, (int, TaintInt)):
         false_value = BitVecConstant(size=size, value=false_value)
     return BitVecITE(size=size, condition=cond, true_value=true_value, false_value=false_value)
 
@@ -234,7 +237,8 @@ def SDIV(a, b):
         return a.sdiv(b)
     elif isinstance(b, BitVec):
         return b.rsdiv(a)
-    return int(math.trunc(float(a) / float(b)))
+    return a // b
+    # return int(math.trunc(float(a) / float(b)))
 
 
 def SMOD(a, b):
@@ -250,7 +254,7 @@ def SREM(a, b):
         return a.srem(b)
     elif isinstance(b, BitVec):
         return b.rsrem(a)
-    elif isinstance(a, int) and isinstance(b, int):
+    elif isinstance(a, (int, TaintInt)) and isinstance(b, (int, TaintInt)):
         return a - int(a / b) * b
     return a % b
 

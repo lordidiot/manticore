@@ -290,7 +290,8 @@ class AnonMap(Map):
         :param data_init: the data to initialize the map.
         """
         super().__init__(start, size, perms, name)
-        self._data = bytearray(size)
+        # self._data = bytearray(size)
+        self._data = [0] * size
         if data_init is not None:
             assert len(data_init) <= size, "More initial data than reserved memory"
             # check that the values this slice points to are ints

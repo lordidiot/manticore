@@ -4,6 +4,7 @@ import logging
 from functools import wraps
 
 import capstone as cs
+from manticore.core.taint import TaintInt
 
 from .abstractcpu import (
     Abi,
@@ -612,7 +613,7 @@ class AMD64RegFile(RegisterFile):
         return register in self._all_registers
 
     def _set_bv(self, register_id, register_size, offset, size, reset, value):
-        if isinstance(value, int):
+        if isinstance(value, (int, TaintInt)):
             # type error or forgiving?
             # if (value & ~((1<<size)-1)) != 0 :
             #    raise TypeError('Value bigger than register')
@@ -641,7 +642,7 @@ class AMD64RegFile(RegisterFile):
 
     def _set_flag(self, register_id, register_size, offset, size, reset, value):
         assert size == 1
-        if not isinstance(value, (bool, int, BitVec, Bool)):
+        if not isinstance(value, (bool, int, BitVec, Bool, TaintInt)):
             raise TypeError
         if isinstance(value, BitVec):
             if value.size != 1:
