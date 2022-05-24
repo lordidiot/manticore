@@ -1168,11 +1168,7 @@ class X86Cpu(Cpu):
         :param dest: destination operand.
         :param src: source operand.
         """
-        if dest == src:
-            # if the operands are the same write zero
-            res = dest.write(0)
-        else:
-            res = dest.write(dest.read() ^ src.read())
+        res = dest.write(dest.read() ^ src.read())
         # Defined Flags: szp
         cpu._calculate_logic_flags(dest.size, res)
 
@@ -1227,7 +1223,7 @@ class X86Cpu(Cpu):
         This instruction executes as described in compatibility mode and legacy mode.
         It is not valid in 64-bit mode.
         ::
-                IF ((AL AND 0FH) > 9) Operators.OR(AF  =  1)
+                IF ((AL AND 0FH) > 9) OR (AF  =  1)
                 THEN
                     AL  =  (AL + 6);
                     AH  =  AH + 1;
@@ -1244,20 +1240,10 @@ class X86Cpu(Cpu):
         cpu.CF = cpu.AF
         cpu.AH = Operators.ITEBV(8, cpu.AF, cpu.AH + 1, cpu.AH)
         cpu.AL = Operators.ITEBV(8, cpu.AF, cpu.AL + 6, cpu.AL)
-        """
-        if (cpu.AL & 0x0F > 9) or cpu.AF == 1:
-            cpu.AL = cpu.AL + 6
-            cpu.AH = cpu.AH + 1
-            cpu.AF = True
-            cpu.CF = True
-        else:
-            cpu.AF = False
-            cpu.CF = False
-        """
         cpu.AL = cpu.AL & 0x0F
 
     @instruction
-    def AAD(cpu, imm=None):
+    def AAD(cpu, imm):
         """
         ASCII adjust AX before division.
 
@@ -1283,12 +1269,7 @@ class X86Cpu(Cpu):
 
         :param cpu: current CPU.
         """
-        if imm is None:
-            imm = 10
-        else:
-            imm = imm.read()
-
-        cpu.AL += cpu.AH * imm
+        cpu.AL += cpu.AH * imm.read()
         cpu.AH = 0
 
         # Defined flags: ...sz.p.
@@ -1318,11 +1299,7 @@ class X86Cpu(Cpu):
 
         :param cpu: current CPU.
         """
-        if imm is None:
-            imm = 10
-        else:
-            imm = imm.read()
-
+        imm = imm.read()
         cpu.AH = Operators.UDIV(cpu.AL, imm)
         cpu.AL = Operators.UREM(cpu.AL, imm)
 
@@ -5571,6 +5548,7 @@ class X86Cpu(Cpu):
         :param cpu: current CPU.
         :param arg0: this argument is ignored.
         """
+        pass
 
     @instruction
     def ENDBR32(cpu):
@@ -5903,6 +5881,31 @@ class X86Cpu(Cpu):
             b = Operators.EXTRACT(value_b, i, 8)
             result.append((a - b) & 0xFF)
         dest.write(Operators.CONCAT(8 * len(result), *result))
+
+    @instruction
+    def PSUBQ(cpu, dest, src):
+        """
+        PSUBQ: Packed add with quadruple words
+        Packed subtract with quad
+
+        Subtracts the second operand (source operand) from the first operand (destination operand) and stores
+        the result in the destination operand. When packed quadword operands are used, a SIMD subtract is performed.
+        When a quadword result is too large to be represented in 64 bits (overflow), the result is wrapped around
+        and the low 64 bits are written to the destination element (that is, the carry is ignored).
+
+        :param cpu: current CPU.
+        :param dest: destination operand.
+        :param src: source operand.
+        """
+        result = []
+        value_a = dest.read()
+        value_b = src.read()
+
+        for i in reversed(range(0, dest.size, 64)):
+            a = Operators.EXTRACT(value_a, i, 64)
+            b = Operators.EXTRACT(value_b, i, 64)
+            result.append((a - b) & 0xFFFFFFFFFFFFFFFF)
+        dest.write(Operators.CONCAT(dest.size, *result))
 
     @instruction
     def POR(cpu, dest, src):
