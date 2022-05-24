@@ -1,4 +1,6 @@
 from functools import reduce
+
+from manticore.core.taint import TaintInt
 from ...exceptions import SmtlibError
 import uuid
 
@@ -544,6 +546,11 @@ class BitVecConstant(BitVec):
     __xslots__: Tuple[str, ...] = ("_value",)
 
     def __init__(self, *, size: int, value: int, **kwargs):
+        if isinstance(value, TaintInt):
+            arg_taint = kwargs.pop("taint", ())
+            val_taint = value.taint.union(arg_taint)
+            kwargs["taint"] = val_taint
+            value = int(value)
         MASK = (1 << size) - 1
         self._value = value & MASK
         super().__init__(size=size, **kwargs)

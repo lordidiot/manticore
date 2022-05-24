@@ -162,7 +162,7 @@ def CONCAT(total_size, *args):
         if len(args) > 1:
 
             def cast(x):
-                if isinstance(x, int):
+                if isinstance(x, (int, TaintInt)):
                     return BitVecConstant(size=arg_size, value=x)
                 return x
 
